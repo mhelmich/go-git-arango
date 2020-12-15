@@ -80,7 +80,3 @@ func newConnectionAndClient(url string) (driver.Connection, driver.Client, error
 func (s *arangoStore) Module(name string) (storage.Storer, error) {
 	return nil, nil
 }
-
-// func (s *arangoStore) Init() error {
-// 	return s.SetReference(plumbing.NewReferenceFromStrings(plumbing.HEAD.String(), ""))
-// }
