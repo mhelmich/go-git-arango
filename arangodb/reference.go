@@ -122,8 +122,8 @@ func (s *referenceStorage) PackRefs() error {
 
 func (s *referenceStorage) readOneDoc(query string, bindVars map[string]interface{}) (*referenceDocument, error) {
 	cursor, err := s.db.Query(driver.WithQueryCount(context.Background()), query, bindVars)
-	if driver.IsNotFound(err) {
-		return nil, plumbing.ErrObjectNotFound
+	if driver.IsNotFound(err) || cursor.Count() == 0 {
+		return nil, plumbing.ErrReferenceNotFound
 	} else if err != nil {
 		return nil, err
 	} else if cursor.Count() > 1 {

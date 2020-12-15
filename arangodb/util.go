@@ -8,24 +8,26 @@ import (
 	driver "github.com/arangodb/go-driver"
 )
 
-func getOrCreateDatabase(client driver.Client, dbName string) (driver.Database, error) {
+func getOrCreateDatabase(client driver.Client, dbName string) (driver.Database, bool, error) {
 	ctx := context.Background()
 	exists, err := client.DatabaseExists(ctx, dbName)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	var db driver.Database
+	var created bool
 	if exists {
 		db, err = client.Database(ctx, dbName)
 	} else {
 		db, err = client.CreateDatabase(ctx, dbName, &driver.CreateDatabaseOptions{})
+		created = true
 	}
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return db, nil
+	return db, created, nil
 }
 
 func getOrCreateCollection(db driver.Database, collectionName string) (driver.Collection, error) {

@@ -21,31 +21,31 @@ type arangoStore struct {
 	miscStorage
 }
 
-// NewStore -
-func NewStore(connURL string, dbName string) (ArangoStore, error) {
+// NewStore creates a new arango git store and sets it up for use by go-git
+func NewStore(connURL string, dbName string) (ArangoStore, bool, error) {
 	conn, c, err := newConnectionAndClient(connURL)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	db, err := getOrCreateDatabase(c, dbName)
+	db, created, err := getOrCreateDatabase(c, dbName)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	os, err := newObjectStorage(db)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	rs, err := newReferenceStorage(db)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	ms, err := newMiscStorage(db)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	return &arangoStore{
@@ -55,7 +55,7 @@ func NewStore(connURL string, dbName string) (ArangoStore, error) {
 		objectStorage:    os,
 		referenceStorage: rs,
 		miscStorage:      ms,
-	}, nil
+	}, created, nil
 }
 
 func newConnectionAndClient(url string) (driver.Connection, driver.Client, error) {
