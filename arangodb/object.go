@@ -13,9 +13,9 @@ import (
 const (
 	objectCollectionName = "objects"
 
-	queryReadDocByHash        = "FOR d IN " + objectCollectionName + " FILTER d.hash == @hash RETURN d"
-	queryReadDocByHashAndType = "FOR d IN " + objectCollectionName + " FILTER d.hash == @hash FILTER d.type == @type RETURN d"
-	queryReadDocsByType       = "FOR d IN " + objectCollectionName + " FILTER d.type == @type RETURN d"
+	queryReadObjectDocByHash        = "FOR d IN " + objectCollectionName + " FILTER d.hash == @hash RETURN d"
+	queryReadObjectDocByHashAndType = "FOR d IN " + objectCollectionName + " FILTER d.hash == @hash && d.type == @type RETURN d"
+	queryIterObjectDocsByType       = "FOR d IN " + objectCollectionName + " FILTER d.type == @type RETURN d"
 )
 
 var (
@@ -107,7 +107,7 @@ func (s *objectStorage) IterEncodedObjects(t plumbing.ObjectType) (storer.Encode
 		return nil, nil
 	}
 
-	cursor, err := s.db.Query(context.Background(), queryReadDocsByType, map[string]interface{}{
+	cursor, err := s.db.Query(context.Background(), queryIterObjectDocsByType, map[string]interface{}{
 		"type": t,
 	})
 	if err != nil {
@@ -142,14 +142,14 @@ func (s *objectStorage) EncodedObjectSize(h plumbing.Hash) (int64, error) {
 }
 
 func (s *objectStorage) readOneDocByHashAndType(h plumbing.Hash, t plumbing.ObjectType) (*objectDocument, error) {
-	return s.readOneDoc(queryReadDocByHashAndType, map[string]interface{}{
+	return s.readOneDoc(queryReadObjectDocByHashAndType, map[string]interface{}{
 		"hash": h.String(),
 		"type": t,
 	})
 }
 
 func (s *objectStorage) readOneDocByHash(h plumbing.Hash) (*objectDocument, error) {
-	return s.readOneDoc(queryReadDocByHash, map[string]interface{}{
+	return s.readOneDoc(queryReadObjectDocByHash, map[string]interface{}{
 		"hash": h.String(),
 	})
 }
@@ -205,7 +205,7 @@ func (iter *objectIter) ForEach(f func(plumbing.EncodedObject) error) error {
 }
 
 func (iter *objectIter) Close() {
-	defer closeSilently(iter.cursor)
+	closeSilently(iter.cursor)
 }
 
 func newEncodedObject() *plumbing.MemoryObject {
