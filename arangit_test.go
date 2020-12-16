@@ -15,7 +15,7 @@ func TestRepoOpen(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestRepoCommitAndPush(t *testing.T) {
+func TestRepoCommit(t *testing.T) {
 	repo, err := OpenRepo("arangit")
 	assert.Nil(t, err)
 
