@@ -100,7 +100,7 @@ func (s *referenceStorage) IterReferences() (storer.ReferenceIter, error) {
 }
 
 func (s *referenceStorage) RemoveReference(refName plumbing.ReferenceName) error {
-	_, err := s.db.Query(driver.WithWaitForSync(context.Background()), queryUpsertReference, map[string]interface{}{
+	_, err := s.db.Query(driver.WithWaitForSync(context.Background()), queryRemoveReference, map[string]interface{}{
 		"name": refName,
 	})
 	return err
