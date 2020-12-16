@@ -3,6 +3,7 @@ package arangit
 import (
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/go-git/go-billy/v5"
@@ -84,7 +85,13 @@ func (r *repository) CommitFile(path string, rdr io.Reader) error {
 func (r *repository) writeFile(path string, rdr io.Reader) error {
 	var f billy.File
 	var err error
-	if r.fileExists(path) {
+	var exists bool
+	exists, err = r.fileExists(path)
+	if err != nil {
+		return err
+	}
+
+	if exists {
 		f, err = r.fs.Open(path)
 	} else {
 		f, err = r.fs.Create(path)
@@ -98,10 +105,13 @@ func (r *repository) writeFile(path string, rdr io.Reader) error {
 	return err
 }
 
-func (r *repository) fileExists(path string) bool {
+func (r *repository) fileExists(path string) (bool, error) {
 	_, err := r.fs.Stat(path)
 	if err != nil {
-		return false
+		if err == os.ErrNotExist {
+			return false, nil
+		}
+		return false, err
 	}
-	return true
+	return true, nil
 }
