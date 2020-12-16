@@ -85,7 +85,13 @@ func (s *objectStorage) SetEncodedObject(o plumbing.EncodedObject) (plumbing.Has
 // TreeObject and AnyObject. If plumbing.AnyObject is given, the object must
 // be looked up regardless of its type.
 func (s *objectStorage) EncodedObject(t plumbing.ObjectType, h plumbing.Hash) (plumbing.EncodedObject, error) {
-	doc, err := s.readOneDocByHashAndType(h, t)
+	var doc *objectDocument
+	var err error
+	if t == plumbing.AnyObject {
+		doc, err = s.readOneDocByHash(h)
+	} else {
+		doc, err = s.readOneDocByHashAndType(h, t)
+	}
 	if err != nil {
 		return nil, err
 	}

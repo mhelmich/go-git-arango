@@ -1,6 +1,7 @@
 package arangit
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,9 +14,15 @@ import (
 	"github.com/mhelmich/arangit/arangodb"
 )
 
+var (
+	// ErrTagExists -
+	ErrTagExists = errors.New("tag already exists")
+)
+
 // Repository -
 type Repository interface {
 	CommitFile(string, io.Reader) error
+	TagHead(tagName string) error
 }
 
 // OpenRepo -
@@ -47,6 +54,54 @@ func OpenRepo(name string) (Repository, error) {
 type repository struct {
 	fs   billy.Filesystem
 	repo *git.Repository
+}
+
+func (r *repository) TagHead(tagName string) error {
+	exists, err := r.tagExists(tagName)
+	if err != nil {
+		return err
+	} else if exists {
+		return ErrTagExists
+	}
+
+	h, err := r.repo.Head()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("HEAD: %s\n", h.Hash().String())
+	tag, err := r.repo.CreateTag(tagName, h.Hash(), &git.CreateTagOptions{
+		Message: tagName,
+		Tagger: &object.Signature{
+			Name:  "John Doe",
+			Email: "john@doe.org",
+			When:  time.Now(),
+		},
+	})
+
+	fmt.Printf("TAG: %s\n", tag.Hash().String())
+	return err
+}
+
+func (r *repository) tagExists(tagName string) (bool, error) {
+	tags, err := r.repo.TagObjects()
+	if err != nil {
+		return false, err
+	}
+
+	var exists bool
+	err = tags.ForEach(func(t *object.Tag) error {
+		if t.Name == tagName {
+			exists = true
+			return fmt.Errorf("found tag with same name")
+		}
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }
 
 func (r *repository) CommitFile(path string, rdr io.Reader) error {
