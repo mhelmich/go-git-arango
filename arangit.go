@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"github.com/go-git/go-billy/v5"
@@ -138,19 +137,10 @@ func (r *repository) CommitFile(path string, rdr io.Reader) error {
 }
 
 func (r *repository) writeFile(path string, rdr io.Reader) error {
-	var f billy.File
-	var err error
-	var exists bool
-	exists, err = r.fileExists(path)
-	if err != nil {
-		return err
-	}
-
-	if exists {
-		f, err = r.fs.Open(path)
-	} else {
-		f, err = r.fs.Create(path)
-	}
+	// counter to ones intuition, Create truncates the file if it already exists
+	// From the doc:
+	// Create creates the named file with mode 0666 (before umask), truncating it if it already exists.
+	f, err := r.fs.Create(path)
 	if err != nil {
 		return err
 	}
@@ -158,15 +148,4 @@ func (r *repository) writeFile(path string, rdr io.Reader) error {
 	defer func() { _ = f.Close() }()
 	_, err = io.Copy(f, rdr)
 	return err
-}
-
-func (r *repository) fileExists(path string) (bool, error) {
-	_, err := r.fs.Stat(path)
-	if err != nil {
-		if err == os.ErrNotExist {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
 }

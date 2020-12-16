@@ -26,4 +26,9 @@ func TestRepoCommitAndTag(t *testing.T) {
 
 	err = repo.TagHead("my-first-tag")
 	assert.Nil(t, err)
+
+	buf = &bytes.Buffer{}
+	buf.WriteString("second commit")
+	err = repo.CommitFile("testing_test.txt", buf)
+	assert.Nil(t, err)
 }

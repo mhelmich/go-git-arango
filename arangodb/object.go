@@ -15,12 +15,14 @@ const (
 
 	queryReadObjectDocByHash        = "FOR d IN " + objectCollectionName + " FILTER d.hash == @hash RETURN d"
 	queryReadObjectDocByHashAndType = "FOR d IN " + objectCollectionName + " FILTER d.hash == @hash && d.type == @type RETURN d"
+	queryIterAllObjectDocs          = "FOR d IN " + objectCollectionName + " RETURN d"
 	queryIterObjectDocsByType       = "FOR d IN " + objectCollectionName + " FILTER d.type == @type RETURN d"
 	queryUpsertObject               = "UPSERT { hash: @hash, type: @type } INSERT { hash: @hash, type: @type, object: @object } UPDATE { object: @object } IN " + objectCollectionName
 )
 
 var (
-	errTooManyResults = errors.New("too many results")
+	errTooManyResults    = errors.New("too many results")
+	errInvalidObjectType = errors.New("invalid object type")
 )
 
 func newObjectStorage(db driver.Database) (objectStorage, error) {
@@ -105,16 +107,20 @@ func (s *objectStorage) EncodedObject(t plumbing.ObjectType, h plumbing.Hash) (p
 
 // IterObjects returns a custom EncodedObjectStorer over all the object
 // on the storage.
-//
-// Valid plumbing.ObjectType values are CommitObject, BlobObject, TagObject,
 func (s *objectStorage) IterEncodedObjects(t plumbing.ObjectType) (storer.EncodedObjectIter, error) {
-	if t != plumbing.CommitObject && t != plumbing.BlobObject && t != plumbing.TagObject {
-		return nil, nil
+	if t == plumbing.OFSDeltaObject || t == plumbing.REFDeltaObject || t == plumbing.InvalidObject {
+		return nil, errInvalidObjectType
 	}
 
-	cursor, err := s.db.Query(context.Background(), queryIterObjectDocsByType, map[string]interface{}{
-		"type": t,
-	})
+	var cursor driver.Cursor
+	var err error
+	if t == plumbing.AnyObject {
+		cursor, err = s.db.Query(context.Background(), queryIterAllObjectDocs, nil)
+	} else {
+		cursor, err = s.db.Query(context.Background(), queryIterObjectDocsByType, map[string]interface{}{
+			"type": t,
+		})
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -189,6 +195,8 @@ func (iter *objectIter) Next() (plumbing.EncodedObject, error) {
 	}
 
 	o := newEncodedObject()
+	o.SetType(doc.Type)
+	o.SetSize(int64(len(doc.Object)))
 	err = readIntoWriter(o.Writer, doc.Object)
 	return o, err
 }
