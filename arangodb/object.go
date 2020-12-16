@@ -94,6 +94,8 @@ func (s *objectStorage) EncodedObject(t plumbing.ObjectType, h plumbing.Hash) (p
 	}
 
 	o := s.NewEncodedObject()
+	o.SetType(doc.Type)
+	o.SetSize(int64(len(doc.Object)))
 	err = readIntoWriter(o.Writer, doc.Object)
 	return o, err
 }
