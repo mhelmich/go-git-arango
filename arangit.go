@@ -14,7 +14,7 @@ import (
 
 // Repository -
 type Repository interface {
-	CommitAndPushFile(string, io.Reader) error
+	CommitFile(string, io.Reader) error
 }
 
 // OpenRepo -
@@ -48,7 +48,7 @@ type repository struct {
 	repo *git.Repository
 }
 
-func (r *repository) CommitAndPushFile(path string, rdr io.Reader) error {
+func (r *repository) CommitFile(path string, rdr io.Reader) error {
 	err := r.writeFile(path, rdr)
 	if err != nil {
 		return err

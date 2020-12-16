@@ -64,7 +64,7 @@ func (s *objectStorage) SetEncodedObject(o plumbing.EncodedObject) (plumbing.Has
 	}
 
 	h := o.Hash()
-	_, err = s.db.Query(driver.WithWaitForSync(context.Background()), queryUpsertReference, map[string]interface{}{
+	_, err = s.db.Query(driver.WithWaitForSync(context.Background()), queryUpsertObject, map[string]interface{}{
 		"hash":   h.String(),
 		"type":   o.Type(),
 		"object": buf.Bytes(),

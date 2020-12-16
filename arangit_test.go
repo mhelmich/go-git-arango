@@ -21,6 +21,6 @@ func TestRepoCommitAndPush(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	buf.WriteString("Hello World!")
-	err = repo.CommitAndPushFile("testing_test.txt", buf)
+	err = repo.CommitFile("testing_test.txt", buf)
 	assert.Nil(t, err)
 }
