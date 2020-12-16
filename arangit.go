@@ -66,7 +66,7 @@ func (r *repository) CommitAndPushFile(path string, rdr io.Reader) error {
 
 	fmt.Printf("HASH: %s\n", h.String())
 
-	commit, err := wt.Commit("example go-git commit", &git.CommitOptions{
+	commit, err := wt.Commit("testing_test.txt commit", &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  "John Doe",
 			Email: "john@doe.org",
@@ -78,7 +78,7 @@ func (r *repository) CommitAndPushFile(path string, rdr io.Reader) error {
 	}
 
 	fmt.Printf("COMMIT: %s\n", commit.String())
-	return r.repo.Push(&git.PushOptions{})
+	return err
 }
 
 func (r *repository) writeFile(path string, rdr io.Reader) error {

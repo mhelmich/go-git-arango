@@ -16,6 +16,7 @@ const (
 	queryReadObjectDocByHash        = "FOR d IN " + objectCollectionName + " FILTER d.hash == @hash RETURN d"
 	queryReadObjectDocByHashAndType = "FOR d IN " + objectCollectionName + " FILTER d.hash == @hash && d.type == @type RETURN d"
 	queryIterObjectDocsByType       = "FOR d IN " + objectCollectionName + " FILTER d.type == @type RETURN d"
+	queryUpsertObject               = "UPSERT { hash: @hash, type: @type } INSERT { hash: @hash, type: @type, object: @object } UPDATE { object: @object } IN " + objectCollectionName
 )
 
 var (
@@ -62,15 +63,11 @@ func (s *objectStorage) SetEncodedObject(o plumbing.EncodedObject) (plumbing.Has
 		return plumbing.ZeroHash, err
 	}
 
-	// the hash for an encoded object is meant to be unique for a repo
-	// this means it should be safe to call CreateDocument on this collection
-	// for each given object
-	// see https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
 	h := o.Hash()
-	_, err = s.coll.CreateDocument(driver.WithWaitForSync(context.Background()), objectDocument{
-		Hash:   h.String(),
-		Type:   o.Type(),
-		Object: buf.Bytes(),
+	_, err = s.db.Query(driver.WithWaitForSync(context.Background()), queryUpsertReference, map[string]interface{}{
+		"hash":   h.String(),
+		"type":   o.Type(),
+		"object": buf.Bytes(),
 	})
 	if err != nil {
 		return plumbing.ZeroHash, err
