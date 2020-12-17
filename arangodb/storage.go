@@ -61,14 +61,15 @@ func NewStore(connURL string, dbName string) (ArangoStore, bool, error) {
 func newConnectionAndClient(url string) (driver.Connection, driver.Client, error) {
 	conn, err := http.NewConnection(http.ConnectionConfig{
 		Endpoints: []string{url},
-		ConnLimit: 32,
+		ConnLimit: 2,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
 	c, err := driver.NewClient(driver.ClientConfig{
-		Connection: conn,
+		Connection:     conn,
+		Authentication: driver.BasicAuthentication("root", ""),
 	})
 	if err != nil {
 		return nil, nil, err

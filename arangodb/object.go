@@ -167,7 +167,7 @@ func (s *objectStorage) readOneDocByHash(h plumbing.Hash) (*objectDocument, erro
 
 func (s *objectStorage) readOneDoc(query string, bindVars map[string]interface{}) (*objectDocument, error) {
 	cursor, err := s.db.Query(driver.WithQueryCount(context.Background()), query, bindVars)
-	if driver.IsNotFound(err) {
+	if driver.IsNotFound(err) || cursor.Count() == 0 {
 		return nil, plumbing.ErrObjectNotFound
 	} else if err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func (s *objectStorage) readOneDoc(query string, bindVars map[string]interface{}
 	defer closeSilently(cursor)
 	var doc *objectDocument
 	_, err = cursor.ReadDocument(context.Background(), &doc)
-	return doc, nil
+	return doc, err
 }
 
 type objectIter struct {
