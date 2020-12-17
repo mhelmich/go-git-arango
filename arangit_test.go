@@ -22,6 +22,8 @@ func TestRepoCommitAndTag(t *testing.T) {
 
 	err = repo.PrintStatus()
 	assert.Nil(t, err)
+	err = repo.DeleteTag("my-first-tag")
+	assert.Nil(t, err)
 
 	buf := &bytes.Buffer{}
 	buf.WriteString("Hello World!")
@@ -33,7 +35,6 @@ func TestRepoCommitAndTag(t *testing.T) {
 
 	err = repo.TagHead("my-first-tag")
 	assert.Nil(t, err)
-	defer func() { _ = repo.DeleteTag("my-first-tag") }()
 
 	bites, err := repo.ReadFileFromHead("testing_test.txt")
 	assert.Nil(t, err)

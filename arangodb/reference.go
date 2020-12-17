@@ -16,7 +16,7 @@ const (
 	queryReference               = "FOR r IN " + referenceCollectionName + " FILTER r.name == @name RETURN r"
 	queryUpsertReference         = "UPSERT { name: @name } INSERT { name: @name, target: @target } UPDATE { target: @target } IN " + referenceCollectionName
 	queryIterReferenceDocsByType = "FOR r IN " + referenceCollectionName + " RETURN r"
-	queryRemoveReference         = "FOR r IN " + referenceCollectionName + " FILTER r.name == @name REMOVE r"
+	queryRemoveReference         = "FOR r IN " + referenceCollectionName + " FILTER r.name == @name REMOVE { _key: r._key } IN " + referenceCollectionName
 	queryAllReferences           = "FOR r IN " + referenceCollectionName + " RETURN r"
 )
 
