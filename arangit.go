@@ -17,8 +17,6 @@ import (
 )
 
 var (
-	// ErrTagExists -
-	ErrTagExists = errors.New("tag already exists")
 	// ErrTagDoesntExist -
 	ErrTagDoesntExist = errors.New("tag doesn't exist")
 )
@@ -26,10 +24,12 @@ var (
 // Repository -
 type Repository interface {
 	CommitFile(string, io.Reader) error
-	TagHead(tagName string) error
+	TagHead(name string) error
 	CheckoutTag(name string) error
 	ReadFileFromHead(path string) ([]byte, error)
 	ReadFileFromTag(tagName string, path string) ([]byte, error)
+	PrintStatus() error
+	DeleteTag(name string) error
 }
 
 // OpenRepo -
@@ -63,6 +63,21 @@ type repository struct {
 	repo *git.Repository
 }
 
+func (r *repository) PrintStatus() error {
+	wt, err := r.repo.Worktree()
+	if err != nil {
+		return err
+	}
+
+	st, err := wt.Status()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Status:\n%s\n", st.String())
+	return nil
+}
+
 func (r *repository) ReadFileFromTag(tagName string, path string) ([]byte, error) {
 	err := r.CheckoutTag(tagName)
 	if err != nil {
@@ -90,6 +105,7 @@ func (r *repository) ReadFileFromHead(path string) ([]byte, error) {
 		return nil, err
 	}
 
+	// r.PrintStatus()
 	err = w.Checkout(&git.CheckoutOptions{
 		Hash: ref.Hash(),
 	})
@@ -97,6 +113,7 @@ func (r *repository) ReadFileFromHead(path string) ([]byte, error) {
 		return nil, err
 	}
 
+	// r.PrintStatus()
 	f, err := r.fs.Open(path)
 	if err != nil {
 		return nil, err
@@ -133,29 +150,46 @@ func (r *repository) CheckoutTag(name string) error {
 		return err
 	}
 
+	// err = r.PrintStatus()
+	// if err != nil {
+	// 	return err
+	// }
+
 	err = wt.Checkout(&git.CheckoutOptions{
-		Hash: tagRef.Hash(),
+		Branch: tagRefName,
 	})
 	if err != nil {
 		return err
 	}
+
+	// err = r.PrintStatus()
+	// if err != nil {
+	// 	return err
+	// }
 
 	infos, err := r.fs.ReadDir(r.fs.Root())
 	if err != nil {
 		return err
 	}
 
+	// for _, info := range infos {
+	// 	fmt.Printf("FILE: %s\n", info.Name())
+	// }
 	fmt.Printf("num files: %d\n", len(infos))
 	return nil
 }
 
+func (r *repository) DeleteTag(name string) error {
+	return r.repo.DeleteTag(name)
+}
+
 func (r *repository) TagHead(name string) error {
-	exists, err := r.tagExists(name)
-	if err != nil {
-		return err
-	} else if exists {
-		return ErrTagExists
-	}
+	// exists, err := r.tagExists(name)
+	// if err != nil {
+	// 	return err
+	// } else if exists {
+	// 	return ErrTagExists
+	// }
 
 	h, err := r.repo.Head()
 	if err != nil {
@@ -164,7 +198,7 @@ func (r *repository) TagHead(name string) error {
 
 	fmt.Printf("HEAD: %s\n", h.Hash().String())
 	tag, err := r.repo.CreateTag(name, h.Hash(), &git.CreateTagOptions{
-		Message: name,
+		Message: "creating tag " + name,
 		Tagger: &object.Signature{
 			Name:  "John Doe",
 			Email: "john@doe.org",
@@ -172,30 +206,32 @@ func (r *repository) TagHead(name string) error {
 		},
 	})
 
-	fmt.Printf("TAG: %s\n", tag.Hash().String())
+	if err == nil {
+		fmt.Printf("TAG: %s %d\n", tag.Hash().String(), tag.Type())
+	}
 	return err
 }
 
-func (r *repository) tagExists(tagName string) (bool, error) {
-	tags, err := r.repo.TagObjects()
-	if err != nil {
-		return false, err
-	}
+// func (r *repository) tagExists(tagName string) (bool, error) {
+// 	tags, err := r.repo.TagObjects()
+// 	if err != nil {
+// 		return false, err
+// 	}
 
-	err = tags.ForEach(func(t *object.Tag) error {
-		if t.Name == tagName {
-			return storer.ErrStop
-		}
-		return nil
-	})
-	if err == storer.ErrStop {
-		return true, nil
-	} else if err != nil {
-		return false, err
-	}
+// 	err = tags.ForEach(func(t *object.Tag) error {
+// 		if t.Name == tagName {
+// 			return storer.ErrStop
+// 		}
+// 		return nil
+// 	})
+// 	if err == storer.ErrStop {
+// 		return true, nil
+// 	} else if err != nil {
+// 		return false, err
+// 	}
 
-	return false, nil
-}
+// 	return false, nil
+// }
 
 func (r *repository) CommitFile(path string, rdr io.Reader) error {
 	err := r.writeFile(path, rdr)
@@ -208,11 +244,13 @@ func (r *repository) CommitFile(path string, rdr io.Reader) error {
 		return err
 	}
 
+	// r.PrintStatus()
 	h, err := wt.Add(path)
 	if err != nil {
 		return err
 	}
 
+	// r.PrintStatus()
 	fmt.Printf("HASH: %s\n", h.String())
 
 	commit, err := wt.Commit("testing_test.txt commit", &git.CommitOptions{
@@ -227,6 +265,7 @@ func (r *repository) CommitFile(path string, rdr io.Reader) error {
 	}
 
 	fmt.Printf("COMMIT: %s\n", commit.String())
+	// r.PrintStatus()
 	return err
 }
 
