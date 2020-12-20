@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/go-git/go-billy/v5"
@@ -19,6 +20,10 @@ import (
 var (
 	// ErrTagDoesntExist -
 	ErrTagDoesntExist = errors.New("tag doesn't exist")
+	// ErrIteratorExhausted -
+	ErrIteratorExhausted = errors.New("iterator is exhausted")
+	// ErrStop -
+	ErrStop = errors.New("stop")
 )
 
 // Repository -
@@ -30,7 +35,18 @@ type Repository interface {
 	ReadFileFromTag(tagName string, path string) ([]byte, error)
 	PrintStatus() error
 	DeleteTag(name string) error
+	FileIterForTag(name string) (FileIterator, error)
+	FileIterForHead() (FileIterator, error)
 }
+
+// FileIterator -
+type FileIterator interface {
+	Next() (io.Reader, error)
+	ForEach(FileIteratorFunc) error
+}
+
+// FileIteratorFunc -
+type FileIteratorFunc func(io.Reader, os.FileInfo) error
 
 // OpenRepo -
 func OpenRepo(name string) (Repository, error) {
@@ -212,27 +228,6 @@ func (r *repository) TagHead(name string) error {
 	return err
 }
 
-// func (r *repository) tagExists(tagName string) (bool, error) {
-// 	tags, err := r.repo.TagObjects()
-// 	if err != nil {
-// 		return false, err
-// 	}
-
-// 	err = tags.ForEach(func(t *object.Tag) error {
-// 		if t.Name == tagName {
-// 			return storer.ErrStop
-// 		}
-// 		return nil
-// 	})
-// 	if err == storer.ErrStop {
-// 		return true, nil
-// 	} else if err != nil {
-// 		return false, err
-// 	}
-
-// 	return false, nil
-// }
-
 func (r *repository) CommitFile(path string, rdr io.Reader) error {
 	err := r.writeFile(path, rdr)
 	if err != nil {
@@ -281,4 +276,68 @@ func (r *repository) writeFile(path string, rdr io.Reader) error {
 	defer func() { _ = f.Close() }()
 	_, err = io.Copy(f, rdr)
 	return err
+}
+
+func (r *repository) FileIterForHead() (FileIterator, error) {
+	infos, err := r.fs.ReadDir(r.fs.Root())
+	if err != nil {
+		return nil, err
+	}
+	return &fileIter{
+		infos: infos,
+		fs:    r.fs,
+	}, nil
+}
+
+func (r *repository) FileIterForTag(name string) (FileIterator, error) {
+	err := r.CheckoutTag(name)
+	if err != nil {
+		return nil, err
+	}
+
+	infos, err := r.fs.ReadDir(r.fs.Root())
+	if err != nil {
+		return nil, err
+	}
+
+	return &fileIter{
+		infos: infos,
+		fs:    r.fs,
+	}, nil
+}
+
+type fileIter struct {
+	infos []os.FileInfo
+	fs    billy.Filesystem
+	idx   int
+}
+
+// TODO: fix this signature ... can't return reader without closing it
+func (i *fileIter) Next() (io.Reader, error) {
+	if i.idx >= len(i.infos) {
+		return nil, ErrIteratorExhausted
+	}
+
+	file, err := i.fs.Open(i.infos[i.idx].Name())
+	i.idx++
+	return file, err
+}
+
+func (i *fileIter) ForEach(f FileIteratorFunc) error {
+	for _, info := range i.infos {
+		file, err := i.fs.Open(info.Name())
+		if err != nil {
+			return err
+		}
+
+		defer func() { _ = file.Close() }()
+		err = f(file, info)
+		if err != nil {
+			if err == ErrStop {
+				return nil
+			}
+			return err
+		}
+	}
+	return nil
 }
